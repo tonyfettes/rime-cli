@@ -32,6 +32,8 @@ static volatile sig_atomic_t done = 0;
 static void signal_handler(int sig);
 static char *get_xdg_data_home();
 static char *get_user_data_dir();
+static char *get_xdg_cache_home();
+static char *get_user_cache_dir();
 static RimeRequest get_request();
 
 // Schema Management
@@ -59,6 +61,7 @@ int main() {
   rime_traits.distribution_code_name = PROJECT_NAME;
   rime_traits.distribution_version = PROJECT_VERSION;
   rime_traits.app_name = "rime." PROJECT_NAME;
+  rime_traits.log_dir = get_user_cache_dir();
   RimeSetup(&rime_traits);
   RimeInitialize(&rime_traits);
   free(user_data_dir);
@@ -120,12 +123,34 @@ static char *get_xdg_data_home() {
   }
 }
 
+static char *get_xdg_cache_home() {
+  const char *xdg_cache_home = getenv("XDG_CACHE_HOME");
+  if (xdg_cache_home) {
+    return strdup(xdg_cache_home);
+  } else {
+    const char *home = getenv("HOME");
+    char *path = malloc(strlen(home) + strlen("/.local/share") + 1);
+    strcpy(path, home);
+    strcat(path, "/.local/share");
+    return path;
+  }
+}
+
 static char *get_user_data_dir() {
   char *xdg_data_home = get_xdg_data_home();
   char *path = malloc(strlen(xdg_data_home) + strlen("/" PROJECT_NAME) + 1);
   strcpy(path, xdg_data_home);
   strcat(path, "/" PROJECT_NAME);
   free(xdg_data_home);
+  return path;
+}
+
+static char *get_user_cache_dir() {
+  char *xdg_cache_home = get_xdg_cache_home();
+  char *path = malloc(strlen(xdg_cache_home) + strlen("/" PROJECT_NAME) + 1);
+  strcpy(path, xdg_cache_home);
+  strcat(path, "/" PROJECT_NAME);
+  free(xdg_cache_home);
   return path;
 }
 
@@ -274,18 +299,6 @@ static char *get_context_response(RimeSessionId session_id) {
   json_object *root = json_object_new_object();
 
   json_object *commit_json = NULL;
-  //RIME_STRUCT(RimeCommit, commit);
-  //if (RimeGetCommit(session_id, &commit)) {
-  //  commit_json = json_object_new_object();
-  //  if (commit.text) {
-  //    json_object_object_add(commit_json, "text",
-  //                           json_object_new_string(commit.text));
-  //  } else {
-  //    json_object_object_add(commit_json, "text", NULL);
-  //  }
-  //  RimeFreeCommit(&commit);
-  //}
-  //json_object_object_add(root, "commit", commit_json);
 
   json_object *composition_json = NULL;
   json_object *menu_json = NULL;
@@ -300,13 +313,6 @@ static char *get_context_response(RimeSessionId session_id) {
     if (context.menu.candidates) {
       menu_json = json_object_new_object();
       json_object *candidates_json = json_object_new_array();
-
-      /////////The code below is useless
-      /// now.////////////////////////////////////
-      // const char *select_keys =
-      //    context.menu.select_keys ? context.menu.select_keys :
-      //    "1234567890";
-      ///////////////////////////////////////////////////////////////////////////
 
       // candidate_cnt: to label the candidate. For sort/priority.
       int candidate_cnt = 0;
