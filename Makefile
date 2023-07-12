@@ -9,4 +9,7 @@ all: rime-cli
 clean:
 	rm -f rime-cli
 
+install:
+	install -D rime-cli -t $(DESTDIR)$(prefix)/bin
+
 .PHONY: all clean
